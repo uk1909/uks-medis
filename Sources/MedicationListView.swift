@@ -17,7 +17,7 @@ struct MedicationListView: View {
                             if !med.dosage.isEmpty {
                                 Text(med.dosage).font(.subheadline).foregroundStyle(.secondary)
                             }
-                            Text(med.times.sorted().map { Medication.timeString($0) }.joined(separator: " · "))
+                            Text(med.scheduleText + " · " + timesText(med))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.teal)
                         }
@@ -49,6 +49,12 @@ struct MedicationListView: View {
                 MedicationEditView(medication: med)
             }
         }
+    }
+
+    private func timesText(_ med: Medication) -> String {
+        let sorted: [Int] = med.times.sorted()
+        let parts: [String] = sorted.map { Medication.timeString($0) }
+        return parts.joined(separator: " · ")
     }
 
     private func delete(at offsets: IndexSet) {

@@ -22,18 +22,25 @@ final class NotificationManager {
                 content.body = body
                 content.sound = .default
 
-                var comps = DateComponents()
-                comps.hour = m / 60
-                comps.minute = m % 60
-                let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
-
-                let request = UNNotificationRequest(
-                    identifier: "\(med.id.uuidString)-\(m)",
-                    content: content,
-                    trigger: trigger
-                )
-                center.add(request)
+                if med.weekdays.isEmpty {
+                    schedule(content, id: "\(med.id.uuidString)-\(m)", minutes: m, weekday: nil)
+                } else {
+                    for wd in Set(med.weekdays) {
+                        schedule(content, id: "\(med.id.uuidString)-\(m)-w\(wd)", minutes: m, weekday: wd)
+                    }
+                }
             }
         }
+    }
+
+    /// Wiederkehrender Hinweis: täglich (weekday = nil) oder wöchentlich am Wochentag.
+    private func schedule(_ content: UNMutableNotificationContent, id: String, minutes m: Int, weekday: Int?) {
+        var comps = DateComponents()
+        comps.hour = m / 60
+        comps.minute = m % 60
+        if let weekday { comps.weekday = weekday }
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+        center.add(request)
     }
 }

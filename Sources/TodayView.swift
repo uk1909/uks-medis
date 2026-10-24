@@ -46,7 +46,7 @@ struct TodayView: View {
 
     private var doses: [Dose] {
         var result: [Dose] = []
-        for med in meds {
+        for med in meds where med.isDue(on: now) {
             for minutes in Set(med.times) {
                 result.append(Dose(med: med, minutes: minutes))
             }
@@ -118,11 +118,17 @@ struct TodayView: View {
                 }
             }
             .overlay {
-                if doses.isEmpty {
+                if meds.isEmpty {
                     ContentUnavailableView(
                         "Noch keine Medikamente",
                         systemImage: "pills",
                         description: Text("Füge im Tab „Medikamente“ dein erstes Medikament hinzu.")
+                    )
+                } else if doses.isEmpty {
+                    ContentUnavailableView(
+                        "Heute nichts einzunehmen",
+                        systemImage: "checkmark.seal",
+                        description: Text("Für heute sind keine Medikamente geplant.")
                     )
                 }
             }

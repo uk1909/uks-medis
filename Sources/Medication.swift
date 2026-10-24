@@ -12,14 +12,41 @@ final class Medication {
     /// Erledigte Einnahmen, Schlüssel "yyyy-MM-dd|Minuten"
     var takenLog: [String] = []
     var createdAt: Date = Date()
+    /// Wochentage der Einnahme (1 = Sonntag … 7 = Samstag, wie Calendar).
+    /// Leer = täglich.
+    var weekdays: [Int] = []
 
-    init(name: String, dosage: String, note: String, times: [Int]) {
+    init(name: String, dosage: String, note: String, times: [Int], weekdays: [Int] = []) {
         self.id = UUID()
         self.name = name
         self.dosage = dosage
         self.note = note
         self.times = times
+        self.weekdays = weekdays
         self.createdAt = Date()
+    }
+
+    // MARK: - Rhythmus
+
+    var isDaily: Bool { weekdays.isEmpty }
+
+    /// Muss das Medikament an diesem Tag genommen werden?
+    func isDue(on day: Date) -> Bool {
+        if weekdays.isEmpty { return true }
+        let wd: Int = Calendar.current.component(.weekday, from: day)
+        return weekdays.contains(wd)
+    }
+
+    /// z. B. "Täglich", "Jeden Montag", "Mo, Mi, Fr"
+    var scheduleText: String {
+        if weekdays.isEmpty { return "Täglich" }
+        let sorted: [Int] = Medication.weekdayOrder.filter { weekdays.contains($0) }
+        if sorted.count == 1 {
+            return "Jeden " + Medication.weekdayLongName(sorted[0])
+        }
+        if sorted.count == 7 { return "Täglich" }
+        let names: [String] = sorted.map { Medication.weekdayShortName($0) }
+        return names.joined(separator: ", ")
     }
 
     // MARK: - Einnahme abhaken
@@ -68,6 +95,19 @@ extension Medication {
 
     static func date(fromMinutes m: Int) -> Date {
         Calendar.current.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: Date()) ?? Date()
+    }
+
+    /// Montag zuerst (deutsche Reihenfolge)
+    static let weekdayOrder: [Int] = [2, 3, 4, 5, 6, 7, 1]
+
+    static func weekdayShortName(_ wd: Int) -> String {
+        let names: [String] = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
+        return names[(wd - 1) % 7]
+    }
+
+    static func weekdayLongName(_ wd: Int) -> String {
+        let names: [String] = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]
+        return names[(wd - 1) % 7]
     }
 
     static func timeString(_ m: Int) -> String {
