@@ -15,6 +15,7 @@ targets:
   UKsMedis:
     type: application
     platform: iOS
+    scheme: {}
     sources:
       - Sources
       - Resources

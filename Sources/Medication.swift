@@ -44,7 +44,10 @@ final class Medication {
         let limitString = Self.dayFormatter.string(from: limit)
         takenLog.removeAll { $0.prefix(10) < limitString }
     }
+}
 
+// Hilfsfunktionen außerhalb des @Model-Körpers
+extension Medication {
     // MARK: - Hilfsfunktionen
 
     static let dayFormatter: DateFormatter = {

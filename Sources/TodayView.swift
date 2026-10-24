@@ -133,14 +133,14 @@ struct DoseRow: View {
             HStack(spacing: 14) {
                 Text(Medication.timeString(dose.minutes))
                     .font(.system(.body, design: .rounded).monospacedDigit().bold())
-                    .foregroundStyle(overdue ? .red : .primary)
+                    .foregroundStyle(overdue ? Color.red : Color.primary)
                     .frame(width: 56, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(dose.med.name)
                         .font(.body.weight(.semibold))
                         .strikethrough(taken)
-                        .foregroundStyle(taken ? .secondary : .primary)
+                        .foregroundStyle(taken ? Color.secondary : Color.primary)
                     if !dose.med.dosage.isEmpty {
                         Text(dose.med.dosage).font(.caption).foregroundStyle(.secondary)
                     }
@@ -153,7 +153,7 @@ struct DoseRow: View {
 
                 Image(systemName: taken ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundStyle(taken ? .teal : .gray)
+                    .foregroundStyle(taken ? Color.teal : Color.gray)
             }
         }
         .buttonStyle(.plain)
