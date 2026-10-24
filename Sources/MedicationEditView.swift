@@ -16,43 +16,57 @@ struct MedicationEditView: View {
     @State private var dosage = ""
     @State private var note = ""
     @State private var times: [TimeEntry] = []
-    @State private var daily = true
+    /// 0 = täglich, 1 = bestimmte Wochentage, 2 = bei Bedarf
+    @State private var mode: Int = 0
+    @State private var isAid = false
     @State private var weekdays: Set<Int> = []
     @State private var loaded = false
 
     private var canSave: Bool {
         let hasName: Bool = !name.trimmingCharacters(in: .whitespaces).isEmpty
-        let hasDays: Bool = daily || !weekdays.isEmpty
+        if mode == 2 { return hasName }
+        let hasDays: Bool = mode == 0 || !weekdays.isEmpty
         return hasName && !times.isEmpty && hasDays
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Medikament") {
-                    TextField("Name (z. B. Ibuprofen)", text: $name)
+                Section {
+                    Picker("Art", selection: $isAid) {
+                        Text("Medikament").tag(false)
+                        Text("Hilfsmittel").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    TextField(isAid ? "Name (z. B. Dexcom G7 Sensor)" : "Name (z. B. Ibuprofen, Insulin)", text: $name)
                     TextField("Dosierung (z. B. 1 Tablette, 400 mg)", text: $dosage)
                     TextField("Hinweis (z. B. zum Essen)", text: $note)
+                } header: {
+                    Text("Eintrag")
                 }
 
                 Section {
-                    Picker("Rhythmus", selection: $daily) {
-                        Text("Täglich").tag(true)
-                        Text("Bestimmte Tage").tag(false)
+                    Picker("Rhythmus", selection: $mode) {
+                        Text("Täglich").tag(0)
+                        Text("Wochentage").tag(1)
+                        Text("Bei Bedarf").tag(2)
                     }
                     .pickerStyle(.segmented)
 
-                    if !daily {
+                    if mode == 1 {
                         WeekdayPicker(selection: $weekdays)
                     }
                 } header: {
                     Text("Wie oft?")
                 } footer: {
-                    if !daily {
+                    if mode == 1 {
                         Text("Für einmal pro Woche einfach nur einen Tag antippen.")
+                    } else if mode == 2 {
+                        Text("Ohne feste Zeiten und ohne Erinnerung. Erscheint auf „Heute“ unter „Bei Bedarf & Hilfsmittel“.")
                     }
                 }
 
+                if mode != 2 {
                 Section {
                     ForEach($times) { $entry in
                         DatePicker("Einnahme", selection: $entry.date, displayedComponents: .hourAndMinute)
@@ -69,14 +83,15 @@ struct MedicationEditView: View {
                 } footer: {
                     Text("Zu jeder Uhrzeit bekommst du an den gewählten Tagen eine Push-Erinnerung. Zum Entfernen einer Uhrzeit nach links wischen.")
                 }
+                }
 
                 if medication != nil {
                     Section {
-                        Button("Medikament löschen", role: .destructive, action: deleteMedication)
+                        Button("Eintrag löschen", role: .destructive, action: deleteMedication)
                     }
                 }
             }
-            .navigationTitle(medication == nil ? "Neues Medikament" : "Bearbeiten")
+            .navigationTitle(medication == nil ? "Neuer Eintrag" : "Bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -98,8 +113,18 @@ struct MedicationEditView: View {
             dosage = m.dosage
             note = m.note
             times = m.times.sorted().map { TimeEntry(date: Medication.date(fromMinutes: $0)) }
-            daily = m.weekdays.isEmpty
+            isAid = m.isAid
             weekdays = Set(m.weekdays)
+            if m.asNeeded {
+                mode = 2
+            } else if m.weekdays.isEmpty {
+                mode = 0
+            } else {
+                mode = 1
+            }
+            if times.isEmpty {
+                times = [TimeEntry(date: Medication.date(fromMinutes: 8 * 60))]
+            }
         } else {
             times = [TimeEntry(date: Medication.date(fromMinutes: 8 * 60))]
         }
@@ -111,9 +136,11 @@ struct MedicationEditView: View {
     }
 
     private func save() {
-        let minutes = Array(Set(times.map { Medication.minutes(from: $0.date) })).sorted()
+        let asNeeded: Bool = mode == 2
+        let allMinutes: [Int] = Array(Set(times.map { Medication.minutes(from: $0.date) })).sorted()
+        let minutes: [Int] = asNeeded ? [] : allMinutes
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
-        let days: [Int] = daily ? [] : Array(weekdays).sorted()
+        let days: [Int] = mode == 1 ? Array(weekdays).sorted() : []
 
         if let m = medication {
             m.name = trimmedName
@@ -121,8 +148,12 @@ struct MedicationEditView: View {
             m.note = note
             m.times = minutes
             m.weekdays = days
+            m.asNeeded = asNeeded
+            m.isAid = isAid
         } else {
-            context.insert(Medication(name: trimmedName, dosage: dosage, note: note, times: minutes, weekdays: days))
+            let med = Medication(name: trimmedName, dosage: dosage, note: note, times: minutes,
+                                 weekdays: days, asNeeded: asNeeded, isAid: isAid)
+            context.insert(med)
         }
         try? context.save()
         rescheduleNotifications()

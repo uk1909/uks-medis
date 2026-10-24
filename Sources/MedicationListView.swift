@@ -17,7 +17,7 @@ struct MedicationListView: View {
                             if !med.dosage.isEmpty {
                                 Text(med.dosage).font(.subheadline).foregroundStyle(.secondary)
                             }
-                            Text(med.scheduleText + " · " + timesText(med))
+                            Text(detailText(med))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.teal)
                         }
@@ -30,9 +30,9 @@ struct MedicationListView: View {
             .overlay {
                 if meds.isEmpty {
                     ContentUnavailableView(
-                        "Keine Medikamente",
+                        "Noch keine Einträge",
                         systemImage: "pills",
-                        description: Text("Tippe auf +, um ein Medikament hinzuzufügen.")
+                        description: Text("Tippe auf +, um ein Medikament oder Hilfsmittel hinzuzufügen.")
                     )
                 }
             }
@@ -49,6 +49,14 @@ struct MedicationListView: View {
                 MedicationEditView(medication: med)
             }
         }
+    }
+
+    private func detailText(_ med: Medication) -> String {
+        var parts: [String] = []
+        if med.isAid { parts.append("Hilfsmittel") }
+        parts.append(med.scheduleText)
+        if !med.asNeeded { parts.append(timesText(med)) }
+        return parts.joined(separator: " · ")
     }
 
     private func timesText(_ med: Medication) -> String {

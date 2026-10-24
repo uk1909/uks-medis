@@ -58,6 +58,8 @@ struct TodayView: View {
         return result
     }
 
+    private var asNeededMeds: [Medication] { meds.filter { $0.asNeeded } }
+
     private var nowMinutes: Int { Medication.minutes(from: now) }
 
     private var nextDose: Dose? {
@@ -116,6 +118,18 @@ struct TodayView: View {
                         }
                     }
                 }
+
+                if !asNeededMeds.isEmpty {
+                    Section {
+                        ForEach(asNeededMeds) { med in
+                            AsNeededRow(med: med, now: now)
+                        }
+                    } header: {
+                        Label("Bei Bedarf & Hilfsmittel", systemImage: "cross.case")
+                    } footer: {
+                        Text("Tippe auf den Knopf, wenn du etwas genommen oder gewechselt hast. Zum Rückgängigmachen nach links wischen.")
+                    }
+                }
             }
             .overlay {
                 if meds.isEmpty {
@@ -124,7 +138,7 @@ struct TodayView: View {
                         systemImage: "pills",
                         description: Text("Füge im Tab „Medikamente“ dein erstes Medikament hinzu.")
                     )
-                } else if doses.isEmpty {
+                } else if doses.isEmpty && asNeededMeds.isEmpty {
                     ContentUnavailableView(
                         "Heute nichts einzunehmen",
                         systemImage: "checkmark.seal",
@@ -177,5 +191,58 @@ struct DoseRow: View {
             }
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct AsNeededRow: View {
+    let med: Medication
+    let now: Date
+
+    private var lastText: String {
+        guard let last = med.lastUsed else { return "Noch nicht erfasst" }
+        let rel: String = last.formatted(.relative(presentation: .named))
+        let abs: String = last.formatted(date: .abbreviated, time: .shortened)
+        var text: String = "Zuletzt \(rel) (\(abs))"
+        let count: Int = med.usageCount(on: now)
+        if count > 1 { text += " · heute \(count)×" }
+        return text
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: med.isAid ? "cross.case" : "pills")
+                .font(.title3)
+                .foregroundStyle(Color.teal)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(med.name).font(.body.weight(.semibold))
+                if !med.dosage.isEmpty {
+                    Text(med.dosage).font(.caption).foregroundStyle(.secondary)
+                }
+                Text(lastText).font(.caption2).foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button {
+                withAnimation { med.logUsage(at: Date()) }
+            } label: {
+                Text(med.isAid ? "Gewechselt" : "Genommen")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color.teal)
+            .controlSize(.small)
+        }
+        .swipeActions(edge: .trailing) {
+            if med.lastUsed != nil {
+                Button(role: .destructive) {
+                    withAnimation { med.undoLastUsage() }
+                } label: {
+                    Label("Rückgängig", systemImage: "arrow.uturn.backward")
+                }
+            }
+        }
     }
 }

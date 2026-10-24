@@ -15,14 +15,23 @@ final class Medication {
     /// Wochentage der Einnahme (1 = Sonntag … 7 = Samstag, wie Calendar).
     /// Leer = täglich.
     var weekdays: [Int] = []
+    /// Ohne festen Rhythmus (z. B. Insulin, Sensorwechsel) – keine Erinnerungen
+    var asNeeded: Bool = false
+    /// Hilfsmittel statt Medikament (z. B. Dexcom G7 Sensor)
+    var isAid: Bool = false
+    /// Zeitpunkte, an denen ein Bei-Bedarf-Eintrag genommen/gewechselt wurde
+    var usageLog: [Date] = []
 
-    init(name: String, dosage: String, note: String, times: [Int], weekdays: [Int] = []) {
+    init(name: String, dosage: String, note: String, times: [Int], weekdays: [Int] = [],
+         asNeeded: Bool = false, isAid: Bool = false) {
         self.id = UUID()
         self.name = name
         self.dosage = dosage
         self.note = note
         self.times = times
         self.weekdays = weekdays
+        self.asNeeded = asNeeded
+        self.isAid = isAid
         self.createdAt = Date()
     }
 
@@ -32,6 +41,7 @@ final class Medication {
 
     /// Muss das Medikament an diesem Tag genommen werden?
     func isDue(on day: Date) -> Bool {
+        if asNeeded { return false }
         if weekdays.isEmpty { return true }
         let wd: Int = Calendar.current.component(.weekday, from: day)
         return weekdays.contains(wd)
@@ -39,6 +49,7 @@ final class Medication {
 
     /// z. B. "Täglich", "Jeden Montag", "Mo, Mi, Fr"
     var scheduleText: String {
+        if asNeeded { return "Bei Bedarf" }
         if weekdays.isEmpty { return "Täglich" }
         let sorted: [Int] = Medication.weekdayOrder.filter { weekdays.contains($0) }
         if sorted.count == 1 {
@@ -47,6 +58,28 @@ final class Medication {
         if sorted.count == 7 { return "Täglich" }
         let names: [String] = sorted.map { Medication.weekdayShortName($0) }
         return names.joined(separator: ", ")
+    }
+
+    // MARK: - Bei Bedarf erfassen
+
+    var lastUsed: Date? { usageLog.max() }
+
+    func logUsage(at date: Date) {
+        usageLog.append(date)
+        if usageLog.count > 300 {
+            usageLog.sort()
+            usageLog.removeFirst(usageLog.count - 300)
+        }
+    }
+
+    func undoLastUsage() {
+        guard let last = usageLog.max(), let i = usageLog.firstIndex(of: last) else { return }
+        usageLog.remove(at: i)
+    }
+
+    func usageCount(on day: Date) -> Int {
+        let cal = Calendar.current
+        return usageLog.filter { cal.isDate($0, inSameDayAs: day) }.count
     }
 
     // MARK: - Einnahme abhaken

@@ -10,6 +10,8 @@ struct ContentView: View {
                 .tabItem { Label("Heute", systemImage: "clock") }
             MedicationListView()
                 .tabItem { Label("Medikamente", systemImage: "pills") }
+            PlanExportView()
+                .tabItem { Label("Plan", systemImage: "doc.text") }
         }
         .tint(.teal)
         .onAppear {

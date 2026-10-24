@@ -13,7 +13,7 @@ final class NotificationManager {
     func rescheduleAll(_ medications: [Medication]) {
         center.removeAllPendingNotificationRequests()
 
-        for med in medications {
+        for med in medications where !med.asNeeded {
             for m in Set(med.times) {
                 let content = UNMutableNotificationContent()
                 content.title = "💊 \(med.name)"
