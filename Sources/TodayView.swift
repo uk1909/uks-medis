@@ -45,8 +45,17 @@ struct TodayView: View {
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     private var doses: [Dose] {
-        meds.flatMap { m in Set(m.times).map { Dose(med: m, minutes: $0) } }
-            .sorted { $0.minutes == $1.minutes ? $0.med.name < $1.med.name : $0.minutes < $1.minutes }
+        var result: [Dose] = []
+        for med in meds {
+            for minutes in Set(med.times) {
+                result.append(Dose(med: med, minutes: minutes))
+            }
+        }
+        result.sort { (a: Dose, b: Dose) -> Bool in
+            if a.minutes != b.minutes { return a.minutes < b.minutes }
+            return a.med.name < b.med.name
+        }
+        return result
     }
 
     private var nowMinutes: Int { Medication.minutes(from: now) }
@@ -57,6 +66,12 @@ struct TodayView: View {
 
     private var takenCount: Int {
         doses.filter { $0.med.isTaken(minutes: $0.minutes, on: now) }.count
+    }
+
+    private func subtitle(for dose: Dose) -> String {
+        let time: String = Medication.timeString(dose.minutes)
+        if dose.med.dosage.isEmpty { return "um \(time) Uhr" }
+        return "um \(time) Uhr · \(dose.med.dosage)"
     }
 
     var body: some View {
@@ -79,8 +94,7 @@ struct TodayView: View {
                                     .foregroundStyle(.teal)
                                 VStack(alignment: .leading) {
                                     Text(next.med.name).font(.headline)
-                                    Text("um \(Medication.timeString(next.minutes)) Uhr"
-                                         + (next.med.dosage.isEmpty ? "" : " · \(next.med.dosage)"))
+                                    Text(subtitle(for: next))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 }
